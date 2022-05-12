@@ -26,6 +26,7 @@
 #include "coll_tuned.h"
 #include "ompi/mca/coll/base/coll_base_topo.h"
 #include "ompi/mca/coll/base/coll_base_util.h"
+#include "at_coll_tuned_online.h"
 
 /* allreduce algorithm variables */
 static int coll_tuned_allreduce_forced_algorithm = 0;
@@ -128,26 +129,46 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
                                             mca_coll_base_module_t *module,
                                             int algorithm, int faninout, int segsize)
 {
-    OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:allreduce_intra_do_this algorithm %d topo fan in/out %d segsize %d",
-                 algorithm, faninout, segsize));
+  int res = MPI_ERR_ARG;
 
-    switch (algorithm) {
-    case (0):
-        return ompi_coll_tuned_allreduce_intra_dec_fixed(sbuf, rbuf, count, dtype, op, comm, module);
-    case (1):
-        return ompi_coll_base_allreduce_intra_basic_linear(sbuf, rbuf, count, dtype, op, comm, module);
-    case (2):
-        return ompi_coll_base_allreduce_intra_nonoverlapping(sbuf, rbuf, count, dtype, op, comm, module);
-    case (3):
-        return ompi_coll_base_allreduce_intra_recursivedoubling(sbuf, rbuf, count, dtype, op, comm, module);
-    case (4):
-        return ompi_coll_base_allreduce_intra_ring(sbuf, rbuf, count, dtype, op, comm, module);
-    case (5):
-        return ompi_coll_base_allreduce_intra_ring_segmented(sbuf, rbuf, count, dtype, op, comm, module, segsize);
-    case (6):
-        return ompi_coll_base_allreduce_intra_redscat_allgather(sbuf, rbuf, count, dtype, op, comm, module);
-    } /* switch */
-    OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:allreduce_intra_do_this attempt to select algorithm %d when only 0-%d is valid?",
-                 algorithm, ompi_coll_tuned_forced_max_algorithms[ALLREDUCE]));
-    return (MPI_ERR_ARG);
+  OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:allreduce_intra_do_this algorithm %d topo fan in/out %d segsize %d",
+      algorithm, faninout, segsize));
+
+  if( AT_is_collective_sampling_enabled() ) {
+    int our_alg_id = AT_get_allreduce_selection_id();
+    int type_size;
+    int comm_size;
+    algorithm = AT_get_allreduce_ompi_id(our_alg_id);
+    segsize   = AT_get_allreduce_ompi_segsize(our_alg_id);
+    ompi_datatype_type_size(dtype, &type_size);
+    comm_size = ompi_comm_size(comm);
+    AT_record_start_timestamp(MPI_ALLREDUCE, our_alg_id, count * type_size, comm_size);
+  }
+  //printf("selected algorithm %d (seg size %d)\n", algorithm, segsize);
+
+  switch (algorithm) {
+  case (0):
+    res = ompi_coll_tuned_allreduce_intra_dec_fixed(sbuf, rbuf, count, dtype, op, comm, module);
+  case (1):
+    res = ompi_coll_base_allreduce_intra_basic_linear(sbuf, rbuf, count, dtype, op, comm, module);
+  case (2):
+    res = ompi_coll_base_allreduce_intra_nonoverlapping(sbuf, rbuf, count, dtype, op, comm, module);
+  case (3):
+    res = ompi_coll_base_allreduce_intra_recursivedoubling(sbuf, rbuf, count, dtype, op, comm, module);
+  case (4):
+    res = ompi_coll_base_allreduce_intra_ring(sbuf, rbuf, count, dtype, op, comm, module);
+  case (5):
+    res = ompi_coll_base_allreduce_intra_ring_segmented(sbuf, rbuf, count, dtype, op, comm, module, segsize);
+  case (6):
+    res = ompi_coll_base_allreduce_intra_redscat_allgather(sbuf, rbuf, count, dtype, op, comm, module);
+  } /* switch */
+  OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:allreduce_intra_do_this attempt to select algorithm %d when only 0-%d is valid?",
+      algorithm, ompi_coll_tuned_forced_max_algorithms[ALLREDUCE]));
+
+  if( AT_is_collective_sampling_enabled() ) {
+    AT_record_end_timestamp(MPI_ALLREDUCE);
+  }
+
+  return (res);
+
 }

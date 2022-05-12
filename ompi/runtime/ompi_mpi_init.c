@@ -96,6 +96,7 @@
 #include "ompi/mpiext/mpiext.h"
 #include "ompi/mca/hook/base/base.h"
 #include "ompi/util/timings.h"
+#include "ompi/mca/coll/tuned/at_coll_tuned_online.h"
 
 #if OPAL_ENABLE_FT_CR == 1
 #include "ompi/mca/crcp/crcp.h"
@@ -1049,6 +1050,7 @@ int ompi_mpi_init(int argc, char **argv, int requested, int *provided,
     OMPI_TIMING_OUT;
     OMPI_TIMING_FINALIZE;
 
+    AT_coll_tune_init();
     ompi_hook_base_mpi_init_bottom(argc, argv, requested, provided);
 
     return MPI_SUCCESS;

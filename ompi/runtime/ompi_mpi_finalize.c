@@ -84,6 +84,7 @@
 #include "ompi/dpm/dpm.h"
 #include "ompi/mpiext/mpiext.h"
 #include "ompi/mca/hook/base/base.h"
+#include "ompi/mca/coll/tuned/at_coll_tuned_online.h"
 
 #if OPAL_ENABLE_FT_CR == 1
 #include "ompi/mca/crcp/crcp.h"
@@ -112,6 +113,7 @@ int ompi_mpi_finalize(void)
     ompi_datatype_t * datatype;
 
     ompi_hook_base_mpi_finalize_top();
+    AT_coll_tune_finalize();
 
     int32_t state = ompi_mpi_state;
     if (state < OMPI_MPI_STATE_INIT_COMPLETED ||
