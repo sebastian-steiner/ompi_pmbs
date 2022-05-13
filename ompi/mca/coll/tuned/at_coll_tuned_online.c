@@ -45,7 +45,7 @@ static int AT_NB_COLLS = sizeof(at_allreduce_algs)/sizeof(AT_col_t);
 
 static int AT_coll_selector = 1;
 
-static const int MAX_NB_TIMES = 500;
+static int MAX_NB_TIMES = 500;
 static stamp_t *at_time_stamps;
 static int at_coll_cnt = 0;
 
@@ -90,122 +90,135 @@ void AT_record_end_timestamp(const AT_mpi_call_t callid) {
 
 static void init_parameters(void) {
   char *trace_fname = NULL;
-//    char *nb_stamps_str = NULL;
+  char *nb_stamps_str = NULL;
+  char *env_str = NULL;
   srand(0);
 
   // default params
   strncpy(AT_MPI_COLL_TRACER_FNAME, AT_MPI_COLL_TRACER_FNAME_DEFAULT, 1023);
 
-  trace_fname= getenv("AT_MPI_COLL_TRACER_FNAME");
+  trace_fname = getenv("AT_MPI_COLL_TRACER_FNAME");
   if( trace_fname != NULL ) {
     int l = strnlen(trace_fname, 1024);
     strncpy(AT_MPI_COLL_TRACER_FNAME, trace_fname, l);
   }
-//    nb_stamps_str = getenv("MPI_COLL_TRACER_NB_STAMPS");
-//    if( nb_stamps_str != NULL ) {
-//      MPI_COLL_TRACER_NB_STAMPS = atoi(nb_stamps_str);
-//    }
+  nb_stamps_str = getenv("AT_MPI_COLL_TRACER_NB_STAMPS");
+  if( nb_stamps_str != NULL ) {
+    MAX_NB_TIMES = atoi(nb_stamps_str);
+  }
+
+  env_str = getenv("AT_MPI_COLL_TRACER_ENABLED");
+  if( env_str != NULL ) {
+    int enabled = atoi(env_str);
+    if( enabled == 1 ) {
+      AT_coll_selector = 1;
+    }
+  }
 }
 
 void AT_coll_tune_init(void) {
   init_parameters();
-  at_time_stamps = (stamp_t *) calloc(MAX_NB_TIMES, sizeof(stamp_t));
-  at_coll_cnt = 0;
+  if( AT_is_collective_sampling_enabled() ) {
+    at_time_stamps = (stamp_t *) calloc(MAX_NB_TIMES, sizeof(stamp_t));
+    at_coll_cnt = 0;
+  }
 }
 
 void AT_coll_tune_finalize(void) {
 
-  int i, j;
-  int rank, nsize;
-  stamp_t *total_mpi_times = NULL;
-  MPI_Datatype mytype[6] = {
-      MPI_INT,  // callid
-      MPI_INT,  // our alg id
-      MPI_INT,  // buf_size
-      MPI_INT,  // comm_size
-      MPI_DOUBLE, // start stamp
-      MPI_DOUBLE  // end stamp
-  };
-  MPI_Datatype timestamp_mpi_t;
-  int blocklengths[6] = {1,  1,1, 1, 1, 1};
-  MPI_Aint disp[6];
-  MPI_Aint base_address;
+  if( AT_is_collective_sampling_enabled() ) {
+    int i, j;
+    int rank, nsize;
+    stamp_t *total_mpi_times = NULL;
+    MPI_Datatype mytype[6] = {
+        MPI_INT,  // callid
+        MPI_INT,  // our alg id
+        MPI_INT,  // buf_size
+        MPI_INT,  // comm_size
+        MPI_DOUBLE, // start stamp
+        MPI_DOUBLE  // end stamp
+    };
+    MPI_Datatype timestamp_mpi_t;
+    int blocklengths[6] = {1, 1, 1, 1, 1, 1};
+    MPI_Aint disp[6];
+    MPI_Aint base_address;
 
-  PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  PMPI_Comm_size(MPI_COMM_WORLD, &nsize);
+    PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    PMPI_Comm_size(MPI_COMM_WORLD, &nsize);
 
-  if (rank == 0) {
-    total_mpi_times = (stamp_t *) calloc(nsize * at_coll_cnt, sizeof(stamp_t));
-  }
-
-  if( at_coll_cnt > 0 ) {
-    MPI_Get_address(&at_time_stamps[0], &base_address);
-    MPI_Get_address(&at_time_stamps[0].call_id, &disp[0]);
-    MPI_Get_address(&at_time_stamps[0].our_alg_id, &disp[1]);
-    MPI_Get_address(&at_time_stamps[0].buf_size, &disp[2]);
-    MPI_Get_address(&at_time_stamps[0].comm_size, &disp[3]);
-    MPI_Get_address(&at_time_stamps[0].stamp_start, &disp[4]);
-    MPI_Get_address(&at_time_stamps[0].stamp_end, &disp[5]);
-
-    disp[0] = MPI_Aint_diff(disp[0], base_address);
-    disp[1] = MPI_Aint_diff(disp[1], base_address);
-    disp[2] = MPI_Aint_diff(disp[2], base_address);
-    disp[3] = MPI_Aint_diff(disp[3], base_address);
-    disp[4] = MPI_Aint_diff(disp[4], base_address);
-    disp[5] = MPI_Aint_diff(disp[5], base_address);
-
-    MPI_Type_create_struct(6, blocklengths, disp, mytype, &timestamp_mpi_t);
-    MPI_Type_commit(&timestamp_mpi_t);
-
-    PMPI_Gather(at_time_stamps,
-                at_coll_cnt,
-                timestamp_mpi_t,
-                total_mpi_times,
-                at_coll_cnt,
-                timestamp_mpi_t,
-                0,
-                MPI_COMM_WORLD);
-  }
-
-
-  if (rank == 0) {
-    FILE *fh;
-
-    fh = fopen(AT_MPI_COLL_TRACER_FNAME, "w");
-    if (fh != NULL) {
-      time_t timer;
-      char buffer[26];
-      struct tm* tm_info;
-
-      timer = time(NULL);
-      tm_info = localtime(&timer);
-      strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
-
-
-      fprintf(fh, "#@ time=%s\n", buffer);
-      fprintf(fh, "#@ nprocs=%d\n", nsize);
-      fprintf(fh, "#@ num_timestamps=%d\n", at_coll_cnt);
-      fprintf(fh, "p\t  idx\tcallid\talgid\tbuf_size\tcomm_size\tstart\t        end\n");
-      for (i = 0; i < at_coll_cnt; i++) {
-        for (j = 0; j < nsize; j++) {
-          fprintf(fh, "%d\t%5d\t%5d\t%6d\t%8d\t\%9d\t%.6f\t%.6f\n", j, i,
-                  total_mpi_times[j * at_coll_cnt + i].call_id,
-                  total_mpi_times[j * at_coll_cnt + i].our_alg_id,
-                  total_mpi_times[j * at_coll_cnt + i].buf_size,
-                  total_mpi_times[j * at_coll_cnt + i].comm_size,
-                  total_mpi_times[j * at_coll_cnt + i].stamp_start,
-                  total_mpi_times[j * at_coll_cnt + i].stamp_end);
-        }
-      }
-      fclose(fh);
-    } else {
-      fprintf(stderr, "Cannot write output file\n");
+    if (rank == 0) {
+      total_mpi_times = (stamp_t *) calloc(nsize * at_coll_cnt, sizeof(stamp_t));
     }
-    free(total_mpi_times);
-  }
 
-  if( at_time_stamps != NULL )
-    free(at_time_stamps);
+    if (at_coll_cnt > 0) {
+      MPI_Get_address(&at_time_stamps[0], &base_address);
+      MPI_Get_address(&at_time_stamps[0].call_id, &disp[0]);
+      MPI_Get_address(&at_time_stamps[0].our_alg_id, &disp[1]);
+      MPI_Get_address(&at_time_stamps[0].buf_size, &disp[2]);
+      MPI_Get_address(&at_time_stamps[0].comm_size, &disp[3]);
+      MPI_Get_address(&at_time_stamps[0].stamp_start, &disp[4]);
+      MPI_Get_address(&at_time_stamps[0].stamp_end, &disp[5]);
+
+      disp[0] = MPI_Aint_diff(disp[0], base_address);
+      disp[1] = MPI_Aint_diff(disp[1], base_address);
+      disp[2] = MPI_Aint_diff(disp[2], base_address);
+      disp[3] = MPI_Aint_diff(disp[3], base_address);
+      disp[4] = MPI_Aint_diff(disp[4], base_address);
+      disp[5] = MPI_Aint_diff(disp[5], base_address);
+
+      MPI_Type_create_struct(6, blocklengths, disp, mytype, &timestamp_mpi_t);
+      MPI_Type_commit(&timestamp_mpi_t);
+
+      PMPI_Gather(at_time_stamps,
+                  at_coll_cnt,
+                  timestamp_mpi_t,
+                  total_mpi_times,
+                  at_coll_cnt,
+                  timestamp_mpi_t,
+                  0,
+                  MPI_COMM_WORLD);
+    }
+
+    if (rank == 0) {
+      FILE *fh;
+
+      fh = fopen(AT_MPI_COLL_TRACER_FNAME, "w");
+      if (fh != NULL) {
+        time_t timer;
+        char buffer[26];
+        struct tm *tm_info;
+
+        timer = time(NULL);
+        tm_info = localtime(&timer);
+        strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+
+        fprintf(fh, "#@ time=%s\n", buffer);
+        fprintf(fh, "#@ nprocs=%d\n", nsize);
+        fprintf(fh, "#@ num_timestamps=%d\n", at_coll_cnt);
+        fprintf(fh, "p\t  idx\tcallid\talgid\tbuf_size\tcomm_size\tstart\t        end\n");
+        for (i = 0; i < at_coll_cnt; i++) {
+          for (j = 0; j < nsize; j++) {
+            fprintf(fh, "%d\t%5d\t%5d\t%6d\t%8d\t\%9d\t%.6f\t%.6f\n", j, i,
+                    total_mpi_times[j * at_coll_cnt + i].call_id,
+                    total_mpi_times[j * at_coll_cnt + i].our_alg_id,
+                    total_mpi_times[j * at_coll_cnt + i].buf_size,
+                    total_mpi_times[j * at_coll_cnt + i].comm_size,
+                    total_mpi_times[j * at_coll_cnt + i].stamp_start,
+                    total_mpi_times[j * at_coll_cnt + i].stamp_end);
+          }
+        }
+        fclose(fh);
+      } else {
+        fprintf(stderr, "Cannot write output file\n");
+      }
+      free(total_mpi_times);
+    }
+
+    if (at_time_stamps != NULL) {
+      free(at_time_stamps);
+    }
+
+  } // end if enabled
 }
 
 

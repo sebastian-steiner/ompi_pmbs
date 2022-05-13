@@ -136,7 +136,7 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
 
   if( AT_is_collective_sampling_enabled() ) {
     int our_alg_id = AT_get_allreduce_selection_id();
-    int type_size;
+    size_t type_size;
     int comm_size;
     algorithm = AT_get_allreduce_ompi_id(our_alg_id);
     segsize   = AT_get_allreduce_ompi_segsize(our_alg_id);
