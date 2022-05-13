@@ -38,7 +38,8 @@ lib@OMPI_LIBMPI_NAME@_la_SOURCES += \
         runtime/ompi_mpi_preconnect.c \
 	runtime/ompi_cr.c \
 	runtime/ompi_info_support.c \
-	runtime/ompi_spc.c
+	runtime/ompi_spc.c \
+      mca/coll/tuned/at_coll_tuned_online.c
 
 # The MPIR portion of the library must be built with flags to
 # enable stepping out of MPI_INIT into main.
