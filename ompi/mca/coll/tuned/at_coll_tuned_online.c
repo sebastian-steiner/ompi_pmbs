@@ -43,7 +43,7 @@ static char AT_MPI_COLL_TRACER_FNAME[1024];
 
 static int AT_NB_COLLS = sizeof(at_allreduce_algs)/sizeof(AT_col_t);
 
-static int AT_coll_selector = 1;
+static int AT_coll_selector = 0;
 
 static int MAX_NB_TIMES = 500;
 static stamp_t *at_time_stamps;
