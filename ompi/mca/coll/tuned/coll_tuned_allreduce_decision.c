@@ -134,7 +134,7 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
   OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:allreduce_intra_do_this algorithm %d topo fan in/out %d segsize %d",
       algorithm, faninout, segsize));
 
-  if( AT_is_collective_sampling_enabled() ) {
+  if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
     int our_alg_id = AT_get_allreduce_selection_id();
     size_t type_size;
     int comm_size;
@@ -172,7 +172,7 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
   OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:allreduce_intra_do_this attempt to select algorithm %d when only 0-%d is valid?",
       algorithm, ompi_coll_tuned_forced_max_algorithms[ALLREDUCE]));
 
-  if( AT_is_collective_sampling_enabled() ) {
+  if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
     AT_record_end_timestamp(MPI_ALLREDUCE);
   }
 

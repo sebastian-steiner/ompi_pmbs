@@ -57,6 +57,10 @@ int AT_is_collective_sampling_enabled() {
   return AT_coll_selector;
 }
 
+int AT_is_collective_sampling_possible() {
+  return at_coll_cnt < MAX_NB_TIMES;
+}
+
 int AT_get_allreduce_selection_id() {
   int algid = rand() % AT_NB_COLLS;
   return algid;
@@ -72,7 +76,7 @@ int AT_get_allreduce_ompi_segsize(int our_alg_id) {
 
 
 void AT_record_start_timestamp(const AT_mpi_call_t callid, const int our_alg_id, const int buf_size, const int comm_size) {
-  if (at_coll_cnt < MAX_NB_TIMES) {
+  if (AT_is_collective_sampling_possible()) {
     at_time_stamps[at_coll_cnt].call_id = callid;
     at_time_stamps[at_coll_cnt].our_alg_id = our_alg_id;
     at_time_stamps[at_coll_cnt].buf_size = buf_size;
@@ -82,7 +86,7 @@ void AT_record_start_timestamp(const AT_mpi_call_t callid, const int our_alg_id,
 }
 
 void AT_record_end_timestamp(const AT_mpi_call_t callid) {
-  if (at_coll_cnt < MAX_NB_TIMES) {
+  if (AT_is_collective_sampling_possible()) {
     at_time_stamps[at_coll_cnt].stamp_end = AT_get_time();
     at_coll_cnt++;
   }

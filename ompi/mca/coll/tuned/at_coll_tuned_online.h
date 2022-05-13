@@ -33,6 +33,7 @@ int AT_get_allreduce_ompi_id(int our_alg_id);
 int AT_get_allreduce_ompi_segsize(int our_alg_id);
 void AT_enable_collective_sampling(int flag);
 int AT_is_collective_sampling_enabled(void);
+int AT_is_collective_sampling_possible(void);
 
 void AT_coll_tune_init(void);
 void AT_coll_tune_finalize(void);
