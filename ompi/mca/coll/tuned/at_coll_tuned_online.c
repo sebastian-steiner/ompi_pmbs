@@ -7,8 +7,11 @@
 #include <string.h>
 #include <mpi.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "at_coll_tuned_online.h"
+#include "ompi/include/mpi.h"
+#include "ompi/communicator/communicator.h"
 
 #if defined(AT_ENABLE_GETTIME_REALTIME)
 #include <time.h>
@@ -48,6 +51,20 @@ static int AT_coll_selector = 0;
 static int MAX_NB_TIMES = 500;
 static stamp_t *at_time_stamps;
 static int at_coll_cnt = 0;
+
+static int AT_nb_nodes = 0;
+static int AT_ppn = 0;
+static int AT_nb_procs = 0;
+
+static void _AT_get_timed_suffix(char *buf) {
+  time_t t = time(NULL);
+  struct tm *lt = localtime(&t);
+  pid_t pid = getpid();
+
+  sprintf(buf, "%d_%04d_%02d_%02d_%02d_%02d",
+          pid, 1900 + lt->tm_year, 1+lt->tm_mon, lt->tm_mday,
+          lt->tm_hour, lt->tm_min);
+}
 
 void AT_enable_collective_sampling(int flag) {
   AT_coll_selector = flag;
@@ -105,7 +122,13 @@ static void init_parameters(void) {
   if( trace_fname != NULL ) {
     int l = strnlen(trace_fname, 1024);
     strncpy(AT_MPI_COLL_TRACER_FNAME, trace_fname, l);
+  } else {
+    char sbuf[40];
+    char fname[512];
+    _AT_get_timed_suffix(sbuf);
+    sprintf(AT_MPI_COLL_TRACER_FNAME, "%s_%s.dat", "timings", sbuf);
   }
+
   nb_stamps_str = getenv("AT_MPI_COLL_TRACER_NB_STAMPS");
   if( nb_stamps_str != NULL ) {
     MAX_NB_TIMES = atoi(nb_stamps_str);
@@ -123,8 +146,19 @@ static void init_parameters(void) {
 void AT_coll_tune_init(void) {
   init_parameters();
   if( AT_is_collective_sampling_enabled() ) {
+    MPI_Comm subcomm;
+
     at_time_stamps = (stamp_t *) calloc(MAX_NB_TIMES, sizeof(stamp_t));
     at_coll_cnt = 0;
+
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &subcomm);
+    MPI_Comm_size(subcomm, &AT_ppn);
+    MPI_Comm_size(MPI_COMM_WORLD, &AT_nb_procs);
+    AT_nb_nodes = AT_nb_procs / AT_ppn;
+    if( AT_nb_procs % AT_ppn != 0 ) {
+      fprintf(stderr, "WARNING: nprocs (%d) is not a multiple of ppn (%d)\n", AT_nb_procs, AT_ppn);
+    }
+
   }
 }
 
@@ -198,11 +232,13 @@ void AT_coll_tune_finalize(void) {
 
         fprintf(fh, "#@ time=%s\n", buffer);
         fprintf(fh, "#@ nprocs=%d\n", nsize);
+        fprintf(fh, "#@ nnodes=%d\n", AT_nb_nodes);
+        fprintf(fh, "#@ ppn=%d\n", AT_ppn);
         fprintf(fh, "#@ num_timestamps=%d\n", at_coll_cnt);
         fprintf(fh, "p\t  idx\tcallid\talgid\tbuf_size\tcomm_size\tstart\t        end\n");
         for (i = 0; i < at_coll_cnt; i++) {
           for (j = 0; j < nsize; j++) {
-            fprintf(fh, "%d\t%5d\t%5d\t%6d\t%8d\t\%9d\t%.6f\t%.6f\n", j, i,
+            fprintf(fh, "%d\t%5d\t%5d\t%6d\t%8d\t%9d\t%.6f\t%.6f\n", j, i,
                     total_mpi_times[j * at_coll_cnt + i].call_id,
                     total_mpi_times[j * at_coll_cnt + i].our_alg_id,
                     total_mpi_times[j * at_coll_cnt + i].buf_size,
