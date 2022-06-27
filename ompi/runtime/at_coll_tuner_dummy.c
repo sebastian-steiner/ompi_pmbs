@@ -34,12 +34,12 @@ void AT_enable_collective_sampling(int flag) {
 
 int AT_is_collective_sampling_enabled(void) {
   printf("dummy\n");
-  return 1;
+  return 0;
 }
 
 int AT_is_collective_sampling_possible(void) {
   printf("dummy\n");
-  return 1;
+  return 0;
 }
 
 double AT_get_time(void) {
