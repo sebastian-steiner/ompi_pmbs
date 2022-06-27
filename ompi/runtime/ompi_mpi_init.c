@@ -96,7 +96,7 @@
 #include "ompi/mpiext/mpiext.h"
 #include "ompi/mca/hook/base/base.h"
 #include "ompi/util/timings.h"
-#include "ompi/mca/coll/tuned/at_coll_tuned_online.h"
+#include "at_coll_tuner.h"
 
 #if OPAL_ENABLE_FT_CR == 1
 #include "ompi/mca/crcp/crcp.h"

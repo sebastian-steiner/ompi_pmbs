@@ -26,7 +26,7 @@
 #include "coll_tuned.h"
 #include "ompi/mca/coll/base/coll_base_topo.h"
 #include "ompi/mca/coll/base/coll_base_util.h"
-#include "at_coll_tuned_online.h"
+#include "at_coll_tuner.h"
 
 /* allreduce algorithm variables */
 static int coll_tuned_allreduce_forced_algorithm = 0;
