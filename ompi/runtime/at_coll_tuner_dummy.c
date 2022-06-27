@@ -2,6 +2,7 @@
 // Created by Sascha on 6/27/22.
 //
 
+#include <stdio.h>
 #include "at_coll_tuner.h"
 
 void AT_coll_tune_init(void) {
