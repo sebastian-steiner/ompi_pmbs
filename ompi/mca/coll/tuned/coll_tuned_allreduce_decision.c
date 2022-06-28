@@ -135,13 +135,14 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
       algorithm, faninout, segsize));
 
   if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
-    int our_alg_id = AT_get_allreduce_selection_id();
     size_t type_size;
     int comm_size;
-    algorithm = AT_get_allreduce_ompi_id(our_alg_id);
-    segsize   = AT_get_allreduce_ompi_segsize(our_alg_id);
     ompi_datatype_type_size(dtype, &type_size);
     comm_size = ompi_comm_size(comm);
+    
+    int our_alg_id = AT_get_allreduce_selection_id(count * type_size, comm_size);
+    algorithm = AT_get_allreduce_ompi_id(our_alg_id);
+    segsize   = AT_get_allreduce_ompi_segsize(our_alg_id);
     AT_record_start_timestamp(MPI_ALLREDUCE, our_alg_id, count * type_size, comm_size);
   }
   //printf("selected algorithm %d (seg size %d)\n", algorithm, segsize);

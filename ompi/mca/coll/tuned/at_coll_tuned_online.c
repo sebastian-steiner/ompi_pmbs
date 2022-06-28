@@ -8,6 +8,7 @@
 #include <mpi.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #include "at_coll_tuned_online.h"
 #include "ompi/include/mpi.h"
@@ -41,8 +42,14 @@ static AT_col_t at_allreduce_algs[] = {
     { 6, 0 }
 };
 
+// indexed in order by message size, number of nodes, processes per node, algorithm-id
+static float**** at_allreduce_probs;
+
 static const char AT_MPI_COLL_TRACER_FNAME_DEFAULT[] = "timings.dat";
 static char AT_MPI_COLL_TRACER_FNAME[1024];
+
+static const char AT_MPI_COLL_PROBS_FNAME_DEFAULT[] = "probs.dat";
+static char AT_MPI_COLL_PROBS_FNAME[1024];
 
 static int AT_NB_COLLS = sizeof(at_allreduce_algs)/sizeof(AT_col_t);
 
@@ -55,6 +62,10 @@ static int at_coll_cnt = 0;
 static int AT_nb_nodes = 0;
 static int AT_ppn = 0;
 static int AT_nb_procs = 0;
+
+static int AT_bins_m = 0;
+static int AT_bins_n = 0;
+static int AT_bins_ppn = 0;
 
 static void _AT_get_timed_suffix(char *buf) {
   time_t t = time(NULL);
@@ -78,9 +89,48 @@ int AT_is_collective_sampling_possible() {
   return at_coll_cnt < MAX_NB_TIMES;
 }
 
-int AT_get_allreduce_selection_id() {
-  int algid = rand() % AT_NB_COLLS;
-  return algid;
+int AT_get_allreduce_selection_id(int buf_size, int comm_size) {
+  float r = (float) rand() / RAND_MAX;
+  int m_bin, n_bin, ppn_bin;
+
+  int nnodes = comm_size / AT_ppn;
+
+  if (buf_size <= 10) {
+    m_bin = 0;
+  } else if (buf_size <= 100) {
+    m_bin = 1;
+  } else if (buf_size <= 10000) {
+    m_bin = 2;
+  } else if (buf_size <= 1000000) {
+    m_bin = 3;
+  } else {
+    m_bin = 4;
+  }
+
+  if (nnodes <= 1) {
+    n_bin = 0;
+  } else if (nnodes <= 18) {
+    n_bin = 1;
+  } else {
+    n_bin = 2;
+  }
+
+  if (AT_ppn <= 1) {
+    ppn_bin = 0;
+  } else if (AT_ppn <= 16) {
+    ppn_bin = 1;
+  } else {
+    ppn_bin = 2;
+  }
+
+  float* p = at_allreduce_probs[m_bin][n_bin][ppn_bin];
+
+  for (int i = 0; i < AT_NB_COLLS; i++) {
+    if (r < p[i]) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 int AT_get_allreduce_ompi_id(int our_alg_id) {
@@ -109,14 +159,64 @@ void AT_record_end_timestamp(const AT_mpi_call_t callid) {
   }
 }
 
+static void init_probabilities(void) {
+  FILE *fh;
+  char* line = NULL;
+  size_t len = 0;
+  ssize_t read;
+
+  int alg = -1;
+
+  int n_algs;
+
+  fh = fopen(AT_MPI_COLL_PROBS_FNAME, "r");
+  if (fh != NULL) {
+    while ((read = getline(&line, &len, fh)) != -1) {
+      if (line == NULL || line[0] == '\n' || line[0] == '#') continue;
+      else if (strncmp("MPI_", line, 4) == 0) {
+        if (strncmp("MPI_Allreduce ", line, 14) == 0) {
+          alg = 0;
+          sscanf(line, "MPI_Allreduce %d %d %d %d\n", &AT_bins_m, &AT_bins_n, &AT_bins_ppn, &n_algs);
+          if (at_allreduce_probs == NULL) {
+            at_allreduce_probs = (float****) malloc(AT_bins_m * sizeof(float***));
+            for (int i = 0; i < AT_bins_m; i++) {
+              at_allreduce_probs[i] = (float***) malloc(AT_bins_n * sizeof(float**));
+              for (int j = 0; j < AT_bins_n; j++) {
+                at_allreduce_probs[i][j] = (float**) malloc(AT_bins_ppn * sizeof(float*));
+                for (int k = 0; k < AT_bins_ppn; k++) {
+                  at_allreduce_probs[i][j][k] = (float*) calloc(n_algs, sizeof(float));
+                }
+              }
+            }
+          }
+        } else if (strncmp("MPI_Bcast ", line, 10) == 0) {
+          alg = 1;
+        } else {
+          alg = -1;
+        }
+      } else {
+        int m, N, ppn, a;
+        float prob;
+        sscanf(line, "%d %d %d %d %f\n", &m, &N, &ppn, &a, &prob);
+        if (alg == 0) {
+          at_allreduce_probs[m][N][ppn][a] = prob;
+        }
+      }
+    }
+    fclose(fh);
+  }
+}
+
 static void init_parameters(void) {
   char *trace_fname = NULL;
+  char *probs_fname = NULL;
   char *nb_stamps_str = NULL;
   char *env_str = NULL;
   srand(0);
 
   // default params
   strncpy(AT_MPI_COLL_TRACER_FNAME, AT_MPI_COLL_TRACER_FNAME_DEFAULT, 1023);
+  strncpy(AT_MPI_COLL_PROBS_FNAME, AT_MPI_COLL_PROBS_FNAME_DEFAULT, 1023);
 
   trace_fname = getenv("AT_MPI_COLL_TRACER_FNAME");
   if( trace_fname != NULL ) {
@@ -128,7 +228,11 @@ static void init_parameters(void) {
     _AT_get_timed_suffix(sbuf);
     sprintf(AT_MPI_COLL_TRACER_FNAME, "%s_%s.dat", "timings", sbuf);
   }
-
+  probs_fname = getenv("AT_MPI_COLL_PROBS_FNAME");
+  if ( probs_fname != NULL ) {
+    int l = strnlen(probs_fname, 1024);
+    strncpy(AT_MPI_COLL_PROBS_FNAME, probs_fname, l);
+  }
   nb_stamps_str = getenv("AT_MPI_COLL_TRACER_NB_STAMPS");
   if( nb_stamps_str != NULL ) {
     MAX_NB_TIMES = atoi(nb_stamps_str);
@@ -139,20 +243,21 @@ static void init_parameters(void) {
     int enabled = atoi(env_str);
     if( enabled == 1 ) {
       AT_coll_selector = 1;
+      init_probabilities();
     }
   }
 }
 
 void AT_coll_tune_init(void) {
+  int *lranks = NULL;
   init_parameters();
   if( AT_is_collective_sampling_enabled() ) {
-    MPI_Comm subcomm;
-
     at_time_stamps = (stamp_t *) calloc(MAX_NB_TIMES, sizeof(stamp_t));
     at_coll_cnt = 0;
 
-    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &subcomm);
-    MPI_Comm_size(subcomm, &AT_ppn);
+    /* how many ranks are potentially participating and on my node? */
+    ompi_comm_split_type_get_part (MPI_COMM_WORLD->c_local_group, MPI_COMM_TYPE_SHARED, &lranks, &AT_ppn);
+
     MPI_Comm_size(MPI_COMM_WORLD, &AT_nb_procs);
     AT_nb_nodes = AT_nb_procs / AT_ppn;
     if( AT_nb_procs % AT_ppn != 0 ) {
@@ -252,6 +357,19 @@ void AT_coll_tune_finalize(void) {
         fprintf(stderr, "Cannot write output file\n");
       }
       free(total_mpi_times);
+      
+      if (AT_coll_selector == 1) {
+        for (int i = 0; i < AT_bins_m; i++) {
+          for (int j = 0; j < AT_bins_n; j++) {
+            for (int k = 0; k < AT_bins_ppn; k++) {
+              free(at_allreduce_probs[i][j][k]);
+            }
+            free(at_allreduce_probs[i][j]);
+          }
+          free(at_allreduce_probs[i]);
+        }
+        free(at_allreduce_probs);
+      }
     }
 
     if (at_time_stamps != NULL) {

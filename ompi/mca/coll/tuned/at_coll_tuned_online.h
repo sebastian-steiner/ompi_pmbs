@@ -28,7 +28,7 @@ typedef struct
 } stamp_t;
 
 
-int AT_get_allreduce_selection_id(void);
+int AT_get_allreduce_selection_id(int buf_size, int comm_size);
 int AT_get_allreduce_ompi_id(int our_alg_id);
 int AT_get_allreduce_ompi_segsize(int our_alg_id);
 void AT_enable_collective_sampling(int flag);
