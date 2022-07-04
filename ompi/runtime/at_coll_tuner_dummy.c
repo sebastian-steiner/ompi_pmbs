@@ -13,7 +13,7 @@ void AT_coll_tune_finalize(void) {
   printf("WARNING: dummy finalize... use LD_PRELOAD\n");
 }
 
-int AT_get_allreduce_selection_id(void) {
+int AT_get_allreduce_selection_id(int buf_size, int comm_size) {
   // empty
   return 0;
 }
