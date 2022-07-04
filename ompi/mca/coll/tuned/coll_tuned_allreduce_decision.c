@@ -131,7 +131,7 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
 {
   int res = MPI_ERR_ARG;
 
-  if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
+  if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() && ompi_op_is_commute(op) ) {
     size_t type_size;
     int comm_size;
     algorithm = AT_get_allreduce_ompi_id(our_alg_id);
