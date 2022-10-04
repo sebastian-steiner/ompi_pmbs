@@ -164,14 +164,15 @@ int ompi_coll_tuned_alltoall_intra_do_this(const void *sbuf, int scount,
                                            int max_requests)
 {
     int res = MPI_ERR_ARG;
+    int comm_size;
+    comm_size = ompi_comm_size(comm);
 
-    if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
+    // on 2 processes the two_procs algorithm gets picked every time
+    if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() && comm_size != 2 ) {
         size_t type_size;
-        int comm_size;
         int our_alg_id;
 
         ompi_datatype_type_size(sdtype, &type_size);
-        comm_size = ompi_comm_size(comm);
         our_alg_id = AT_get_alltoall_selection_id(scount * type_size, comm_size);
 
         AT_col_t our_alg = AT_get_alltoall_our_alg(our_alg_id);
@@ -206,7 +207,8 @@ int ompi_coll_tuned_alltoall_intra_do_this(const void *sbuf, int scount,
     OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:alltoall_intra_do_this attempt to select algorithm %d when only 0-%d is valid?",
                  algorithm, ompi_coll_tuned_forced_max_algorithms[ALLTOALL]));
 
-    if ( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
+    // on 2 processes the two_procs algorithm gets picked every time
+    if ( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() && comm_size != 2 ) {
         AT_record_end_timestamp(MPI_ALLTOALL);
     }
     return (res);
