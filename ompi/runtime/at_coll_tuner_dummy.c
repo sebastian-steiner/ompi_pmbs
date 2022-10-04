@@ -92,10 +92,10 @@ double AT_get_time(void) {
   return 0.0;
 }
 
-void AT_record_start_timestamp(const AT_mpi_call_t callid, const int our_alg_id, const int buf_size, const int comm_size) {
+int AT_record_start_timestamp(const AT_mpi_call_t callid, const int our_alg_id, const int buf_size, const int comm_size) {
   // empty
 }
 
-void AT_record_end_timestamp(const AT_mpi_call_t callid) {
+void AT_record_end_timestamp(const AT_mpi_call_t callid, const int coll_cnt) {
   // empty
 }

@@ -7,7 +7,7 @@
 .project
 .gdb*
 .idea
-
+build
 .hgrc
 .hgignore
 .hg

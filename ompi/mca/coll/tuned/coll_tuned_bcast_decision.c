@@ -141,6 +141,7 @@ int ompi_coll_tuned_bcast_intra_do_this(void *buf, int count,
                                         int algorithm, int faninout, int segsize)
 {
     int res = MPI_ERR_ARG;
+    int coll_cnt;
 
     if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
         size_t type_size;
@@ -155,7 +156,7 @@ int ompi_coll_tuned_bcast_intra_do_this(void *buf, int count,
         algorithm = our_alg.ompi_alg_id;
         segsize = our_alg.seg_size;
         faninout = our_alg.faninout;
-        AT_record_start_timestamp(MPI_BCAST, our_alg_id, count * type_size, comm_size);
+        coll_cnt = AT_record_start_timestamp(MPI_BCAST, our_alg_id, count * type_size, comm_size);
     }
 
     OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:bcast_intra_do_this algorithm %d topo faninout %d segsize %d",
@@ -198,7 +199,7 @@ int ompi_coll_tuned_bcast_intra_do_this(void *buf, int count,
                  algorithm, ompi_coll_tuned_forced_max_algorithms[BCAST]));
 
     if ( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
-        AT_record_end_timestamp(MPI_BCAST);
+        AT_record_end_timestamp(MPI_BCAST, coll_cnt);
     }
     return (res);
 }

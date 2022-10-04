@@ -132,7 +132,7 @@ int ompi_coll_tuned_allgather_intra_do_this(const void *sbuf, int scount,
                                             int algorithm, int faninout, int segsize)
 {
     int res = MPI_ERR_ARG;
-    int comm_size;
+    int comm_size, coll_cnt;
     comm_size = ompi_comm_size(comm);
 
     // on 2 processes the two_procs algorithm gets picked every time
@@ -145,7 +145,7 @@ int ompi_coll_tuned_allgather_intra_do_this(const void *sbuf, int scount,
 
         AT_col_t our_alg = AT_get_allgather_our_alg(our_alg_id);
         algorithm = our_alg.ompi_alg_id;
-        AT_record_start_timestamp(MPI_ALLGATHER, our_alg_id, scount * type_size, comm_size);
+        coll_cnt = AT_record_start_timestamp(MPI_ALLGATHER, our_alg_id, scount * type_size, comm_size);
     }
     OPAL_OUTPUT((ompi_coll_tuned_stream,
                  "coll:tuned:allgather_intra_do_this selected algorithm %d topo faninout %d segsize %d",
@@ -194,7 +194,7 @@ int ompi_coll_tuned_allgather_intra_do_this(const void *sbuf, int scount,
 
     // on 2 processes the two_procs algorithm gets picked every time
     if ( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() && comm_size != 2 ) {
-        AT_record_end_timestamp(MPI_ALLGATHER);
+        AT_record_end_timestamp(MPI_ALLGATHER, coll_cnt);
     }
 
     return (res);

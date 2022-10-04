@@ -130,6 +130,7 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
                                             int algorithm, int faninout, int segsize)
 {
   int res = MPI_ERR_ARG;
+  int coll_cnt;
 
   if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() && ompi_op_is_commute(op) ) {
     size_t type_size;
@@ -143,7 +144,7 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
     AT_col_t our_alg = AT_get_allreduce_our_alg(our_alg_id);
     algorithm = our_alg.ompi_alg_id;
     segsize = our_alg.seg_size;
-    AT_record_start_timestamp(MPI_ALLREDUCE, our_alg_id, count * type_size, comm_size);
+    coll_cnt = AT_record_start_timestamp(MPI_ALLREDUCE, our_alg_id, count * type_size, comm_size);
   }
   //printf("selected algorithm %d (seg size %d)\n", algorithm, segsize);
   
@@ -177,7 +178,7 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
       algorithm, ompi_coll_tuned_forced_max_algorithms[ALLREDUCE]));
 
   if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() && ompi_op_is_commute(op) ) {
-    AT_record_end_timestamp(MPI_ALLREDUCE);
+    AT_record_end_timestamp(MPI_ALLREDUCE, coll_cnt);
   }
 
   return (res);
