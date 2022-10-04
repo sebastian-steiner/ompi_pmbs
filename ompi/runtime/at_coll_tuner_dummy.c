@@ -37,9 +37,9 @@ AT_col_t AT_get_allreduce_our_alg(int our_alg_id) {
   // empty
   AT_col_t res;
   res.ompi_alg_id = 0;
-  res.seg_size = 0;
+  res.seg_size = 64;
   res.faninout = 0;
-  res.max_requests = 0;
+  res.max_requests = 128;
   return res;
 }
 
@@ -47,9 +47,9 @@ AT_col_t AT_get_bcast_our_alg(int our_alg_id) {
   // empty
   AT_col_t res;
   res.ompi_alg_id = 0;
-  res.seg_size = 0;
+  res.seg_size = 64;
   res.faninout = 0;
-  res.max_requests = 0;
+  res.max_requests = 128;
   return res;
 }
 
@@ -57,9 +57,9 @@ AT_col_t AT_get_allgather_our_alg(int our_alg_id) {
   // empty
   AT_col_t res;
   res.ompi_alg_id = 0;
-  res.seg_size = 0;
+  res.seg_size = 64;
   res.faninout = 0;
-  res.max_requests = 0;
+  res.max_requests = 128;
   return res;
 }
 
@@ -67,9 +67,9 @@ AT_col_t AT_get_alltoall_our_alg(int our_alg_id) {
   // empty
   AT_col_t res;
   res.ompi_alg_id = 0;
-  res.seg_size = 0;
+  res.seg_size = 64;
   res.faninout = 0;
-  res.max_requests = 0;
+  res.max_requests = 128;
   return res;
 }
 

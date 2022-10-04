@@ -164,30 +164,40 @@ int ompi_coll_tuned_bcast_intra_do_this(void *buf, int count,
     switch (algorithm) {
     case (0):
         res = ompi_coll_tuned_bcast_intra_dec_fixed( buf, count, dtype, root, comm, module );
+        break;
     case (1):
         res = ompi_coll_base_bcast_intra_basic_linear( buf, count, dtype, root, comm, module );
+        break;
     case (2):
         res = ompi_coll_base_bcast_intra_chain( buf, count, dtype, root, comm, module, segsize, faninout );
+        break;
     case (3):
         res = ompi_coll_base_bcast_intra_pipeline( buf, count, dtype, root, comm, module, segsize );
+        break;
     case (4):
         res = ompi_coll_base_bcast_intra_split_bintree( buf, count, dtype, root, comm, module, segsize );
+        break;
     case (5):
         res = ompi_coll_base_bcast_intra_bintree( buf, count, dtype, root, comm, module, segsize );
+        break;
     case (6):
         res = ompi_coll_base_bcast_intra_binomial( buf, count, dtype, root, comm, module, segsize );
+        break;
     case (7):
         res = ompi_coll_base_bcast_intra_knomial(buf, count, dtype, root, comm, module,
                                                   segsize, coll_tuned_bcast_knomial_radix);
+        break;
     case (8):
         res = ompi_coll_base_bcast_intra_scatter_allgather(buf, count, dtype, root, comm, module, segsize);
+        break;
     case (9):
         res = ompi_coll_base_bcast_intra_scatter_allgather_ring(buf, count, dtype, root, comm, module, segsize);
+        break;
     } /* switch */
     OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:bcast_intra_do_this attempt to select algorithm %d when only 0-%d is valid?",
                  algorithm, ompi_coll_tuned_forced_max_algorithms[BCAST]));
 
-    if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
+    if ( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
         AT_record_end_timestamp(MPI_BCAST);
     }
     return (res);

@@ -186,21 +186,27 @@ int ompi_coll_tuned_alltoall_intra_do_this(const void *sbuf, int scount,
     switch (algorithm) {
     case (0):
         res = ompi_coll_tuned_alltoall_intra_dec_fixed(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm, module);
+        break;
     case (1):
         res = ompi_coll_base_alltoall_intra_basic_linear(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm, module);
+        break;
     case (2):
         res = ompi_coll_base_alltoall_intra_pairwise(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm, module);
+        break;
     case (3):
         res = ompi_coll_base_alltoall_intra_bruck(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm, module);
+        break;
     case (4):
         res = ompi_coll_base_alltoall_intra_linear_sync(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm, module, max_requests);
+        break;
     case (5):
         res = ompi_coll_base_alltoall_intra_two_procs(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm, module);
+        break;
     } /* switch */
     OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:alltoall_intra_do_this attempt to select algorithm %d when only 0-%d is valid?",
                  algorithm, ompi_coll_tuned_forced_max_algorithms[ALLTOALL]));
 
-    if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
+    if ( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
         AT_record_end_timestamp(MPI_ALLTOALL);
     }
     return (res);

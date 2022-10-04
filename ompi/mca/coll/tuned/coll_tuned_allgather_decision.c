@@ -155,36 +155,43 @@ int ompi_coll_tuned_allgather_intra_do_this(const void *sbuf, int scount,
         res = ompi_coll_tuned_allgather_intra_dec_fixed(sbuf, scount, sdtype,
                                                          rbuf, rcount, rdtype,
                                                          comm, module);
+        break;
     case (1):
         res = ompi_coll_base_allgather_intra_basic_linear(sbuf, scount, sdtype,
                                                            rbuf, rcount, rdtype,
                                                            comm, module);
+        break;
     case (2):
         res = ompi_coll_base_allgather_intra_bruck(sbuf, scount, sdtype,
                                                     rbuf, rcount, rdtype,
                                                     comm, module);
+        break;
     case (3):
         res = ompi_coll_base_allgather_intra_recursivedoubling(sbuf, scount, sdtype,
                                                                 rbuf, rcount, rdtype,
                                                                 comm, module);
+        break;
     case (4):
         res = ompi_coll_base_allgather_intra_ring(sbuf, scount, sdtype,
                                                    rbuf, rcount, rdtype,
                                                    comm, module);
+        break;
     case (5):
         res = ompi_coll_base_allgather_intra_neighborexchange(sbuf, scount, sdtype,
                                                                rbuf, rcount, rdtype,
                                                                comm, module);
+        break;
     case (6):
         res = ompi_coll_base_allgather_intra_two_procs(sbuf, scount, sdtype,
                                                         rbuf, rcount, rdtype,
                                                         comm, module);
+        break;
     } /* switch */
     OPAL_OUTPUT((ompi_coll_tuned_stream,
                  "coll:tuned:allgather_intra_do_this attempt to select algorithm %d when only 0-%d is valid?",
                  algorithm, ompi_coll_tuned_forced_max_algorithms[ALLGATHER]));
 
-    if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
+    if ( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
         AT_record_end_timestamp(MPI_ALLGATHER);
     }
 
