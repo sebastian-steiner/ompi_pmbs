@@ -656,7 +656,7 @@ int ompi_comm_split( ompi_communicator_t* comm, int color, int key,
  * Produces an array of ranks that will be part of the local/remote group in the
  * new communicator. The results array will be modified by this call.
  */
-int ompi_comm_split_type_get_part (ompi_group_t *group, const int split_type, int **ranks_out, int *rank_size) {
+static int ompi_comm_split_type_get_part (ompi_group_t *group, const int split_type, int **ranks_out, int *rank_size) {
     int size = ompi_group_size (group);
     int my_size = 0;
     int *ranks;

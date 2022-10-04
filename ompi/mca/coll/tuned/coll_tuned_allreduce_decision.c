@@ -134,14 +134,15 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
   if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() && ompi_op_is_commute(op) ) {
     size_t type_size;
     int comm_size;
-    int our_alg_id ;
+    int our_alg_id;
 
     ompi_datatype_type_size(dtype, &type_size);
     comm_size = ompi_comm_size(comm);
     our_alg_id = AT_get_allreduce_selection_id(count * type_size, comm_size);
 
-    algorithm = AT_get_allreduce_ompi_id(our_alg_id);
-    segsize   = AT_get_allreduce_ompi_segsize(our_alg_id);
+    AT_col_t our_alg = AT_get_allreduce_our_alg(our_alg_id);
+    algorithm = our_alg.ompi_alg_id;
+    segsize = our_alg.seg_size;
     AT_record_start_timestamp(MPI_ALLREDUCE, our_alg_id, count * type_size, comm_size);
   }
   //printf("selected algorithm %d (seg size %d)\n", algorithm, segsize);
@@ -175,7 +176,7 @@ int ompi_coll_tuned_allreduce_intra_do_this(const void *sbuf, void *rbuf, int co
   OPAL_OUTPUT((ompi_coll_tuned_stream,"coll:tuned:allreduce_intra_do_this attempt to select algorithm %d when only 0-%d is valid?",
       algorithm, ompi_coll_tuned_forced_max_algorithms[ALLREDUCE]));
 
-  if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
+  if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() && ompi_op_is_commute(op) ) {
     AT_record_end_timestamp(MPI_ALLREDUCE);
   }
 

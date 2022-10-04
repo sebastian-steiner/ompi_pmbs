@@ -494,20 +494,6 @@ OMPI_DECLSPEC int ompi_comm_split_type(ompi_communicator_t *comm,
                                        ompi_communicator_t** newcomm);
 
 /**
- * get size of a communicator group based on the specified split_type.
- * Useful to get size of shared communication group 
- * 
- * @param group 
- * @param split_type 
- * @param ranks_out 
- * @param rank_size 
- * @return OMPI_DECLSPEC 
- */
-OMPI_DECLSPEC int ompi_comm_split_type_get_part (ompi_group_t *group,
-                                                 const int split_type,
-                                                 int **ranks_out,
-                                                 int *rank_size);
-/**
  * dup a communicator. Parameter are identical to the MPI-counterpart
  * of the function. It has been extracted, since we need to be able
  * to dup a communicator internally as well.

@@ -18,11 +18,6 @@ int AT_get_allreduce_selection_id(int buf_size, int comm_size) {
   return 0;
 }
 
-int AT_get_barrier_selection_id(int buf_size, int comm_size) {
-  // empty
-  return 0;
-}
-
 int AT_get_bcast_selection_id(int buf_size, int comm_size) {
   // empty
   return 0;
@@ -38,14 +33,44 @@ int AT_get_alltoall_selection_id(int buf_size, int comm_size) {
   return 0;
 }
 
-int AT_get_allreduce_ompi_id(int our_alg_id) {
+AT_col_t AT_get_allreduce_our_alg(int our_alg_id) {
   // empty
-  return 0;
+  AT_col_t res;
+  res.ompi_alg_id = 0;
+  res.seg_size = 0;
+  res.faninout = 0;
+  res.max_requests = 0;
+  return res;
 }
 
-int AT_get_allreduce_ompi_segsize(int our_alg_id) {
+AT_col_t AT_get_bcast_our_alg(int our_alg_id) {
   // empty
-  return 64;
+  AT_col_t res;
+  res.ompi_alg_id = 0;
+  res.seg_size = 0;
+  res.faninout = 0;
+  res.max_requests = 0;
+  return res;
+}
+
+AT_col_t AT_get_allgather_our_alg(int our_alg_id) {
+  // empty
+  AT_col_t res;
+  res.ompi_alg_id = 0;
+  res.seg_size = 0;
+  res.faninout = 0;
+  res.max_requests = 0;
+  return res;
+}
+
+AT_col_t AT_get_alltoall_our_alg(int our_alg_id) {
+  // empty
+  AT_col_t res;
+  res.ompi_alg_id = 0;
+  res.seg_size = 0;
+  res.faninout = 0;
+  res.max_requests = 0;
+  return res;
 }
 
 void AT_enable_collective_sampling(int flag) {

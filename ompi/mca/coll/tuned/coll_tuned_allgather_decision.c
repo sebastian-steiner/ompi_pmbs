@@ -24,6 +24,7 @@
 #include "ompi/mca/coll/base/coll_base_topo.h"
 #include "ompi/mca/coll/base/coll_base_util.h"
 #include "coll_tuned.h"
+#include "at_coll_tuner.h"
 
 /* allgather algorithm variables */
 static int coll_tuned_allgather_forced_algorithm = 0;
@@ -130,42 +131,62 @@ int ompi_coll_tuned_allgather_intra_do_this(const void *sbuf, int scount,
                                             mca_coll_base_module_t *module,
                                             int algorithm, int faninout, int segsize)
 {
+    int res = MPI_ERR_ARG;
+
+    if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
+        size_t type_size;
+        int comm_size;
+        int our_alg_id;
+
+        ompi_datatype_type_size(sdtype, &type_size);
+        comm_size = ompi_comm_size(comm);
+        our_alg_id = AT_get_allgather_selection_id(scount * type_size, comm_size);
+
+        AT_col_t our_alg = AT_get_allgather_our_alg(our_alg_id);
+        algorithm = our_alg.ompi_alg_id;
+        AT_record_start_timestamp(MPI_ALLGATHER, our_alg_id, scount * type_size, comm_size);
+    }
     OPAL_OUTPUT((ompi_coll_tuned_stream,
                  "coll:tuned:allgather_intra_do_this selected algorithm %d topo faninout %d segsize %d",
                  algorithm, faninout, segsize));
 
     switch (algorithm) {
     case (0):
-        return ompi_coll_tuned_allgather_intra_dec_fixed(sbuf, scount, sdtype,
+        res = ompi_coll_tuned_allgather_intra_dec_fixed(sbuf, scount, sdtype,
                                                          rbuf, rcount, rdtype,
                                                          comm, module);
     case (1):
-        return ompi_coll_base_allgather_intra_basic_linear(sbuf, scount, sdtype,
+        res = ompi_coll_base_allgather_intra_basic_linear(sbuf, scount, sdtype,
                                                            rbuf, rcount, rdtype,
                                                            comm, module);
     case (2):
-        return ompi_coll_base_allgather_intra_bruck(sbuf, scount, sdtype,
+        res = ompi_coll_base_allgather_intra_bruck(sbuf, scount, sdtype,
                                                     rbuf, rcount, rdtype,
                                                     comm, module);
     case (3):
-        return ompi_coll_base_allgather_intra_recursivedoubling(sbuf, scount, sdtype,
+        res = ompi_coll_base_allgather_intra_recursivedoubling(sbuf, scount, sdtype,
                                                                 rbuf, rcount, rdtype,
                                                                 comm, module);
     case (4):
-        return ompi_coll_base_allgather_intra_ring(sbuf, scount, sdtype,
+        res = ompi_coll_base_allgather_intra_ring(sbuf, scount, sdtype,
                                                    rbuf, rcount, rdtype,
                                                    comm, module);
     case (5):
-        return ompi_coll_base_allgather_intra_neighborexchange(sbuf, scount, sdtype,
+        res = ompi_coll_base_allgather_intra_neighborexchange(sbuf, scount, sdtype,
                                                                rbuf, rcount, rdtype,
                                                                comm, module);
     case (6):
-        return ompi_coll_base_allgather_intra_two_procs(sbuf, scount, sdtype,
+        res = ompi_coll_base_allgather_intra_two_procs(sbuf, scount, sdtype,
                                                         rbuf, rcount, rdtype,
                                                         comm, module);
     } /* switch */
     OPAL_OUTPUT((ompi_coll_tuned_stream,
                  "coll:tuned:allgather_intra_do_this attempt to select algorithm %d when only 0-%d is valid?",
                  algorithm, ompi_coll_tuned_forced_max_algorithms[ALLGATHER]));
-    return (MPI_ERR_ARG);
+
+    if( AT_is_collective_sampling_enabled() && AT_is_collective_sampling_possible() ) {
+        AT_record_end_timestamp(MPI_ALLGATHER);
+    }
+
+    return (res);
 }
